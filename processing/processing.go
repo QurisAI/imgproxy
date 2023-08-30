@@ -23,6 +23,7 @@ var mainPipeline = pipeline{
 	trim,
 	prepare,
 	scaleOnLoad,
+	normalize8bit,
 	importColorProfile,
 	crop,
 	scale,
