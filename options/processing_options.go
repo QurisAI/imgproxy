@@ -91,6 +91,7 @@ type ProcessingOptions struct {
 	StripColorProfile bool
 	AutoRotate        bool
 	EnforceThumbnail  bool
+	Normalize8Bit     bool
 
 	SkipProcessingFormats []imagetype.Type
 
@@ -145,6 +146,7 @@ func NewProcessingOptions() *ProcessingOptions {
 		AutoRotate:        config.AutoRotate,
 		EnforceThumbnail:  config.EnforceThumbnail,
 		ReturnAttachment:  config.ReturnAttachment,
+		Normalize8Bit: 	   false,
 
 		SkipProcessingFormats: append([]imagetype.Type(nil), config.SkipProcessingFormats...),
 		UsedPresets:           make([]string, 0, len(config.Presets)),
@@ -976,6 +978,15 @@ func applyMaxAnimationFrameResolutionOption(po *ProcessingOptions, args []string
 	return nil
 }
 
+func applyNormalize8BitOption(po *ProcessingOptions, args []string) error {
+	if len(args) > 1 {
+		return fmt.Errorf("Invalid Normalize8Bit arguments: %v", args)
+	}
+	po.Normalize8Bit = parseBoolOption(args[0])
+
+	return nil
+}
+
 func applyURLOption(po *ProcessingOptions, name string, args []string) error {
 	switch name {
 	case "resize", "rs":
@@ -1032,6 +1043,8 @@ func applyURLOption(po *ProcessingOptions, name string, args []string) error {
 		return applyStripColorProfileOption(po, args)
 	case "enforce_thumbnail", "eth":
 		return applyEnforceThumbnailOption(po, args)
+	case "normalize_8bit", "n8b":
+		return applyNormalize8BitOption(po, args)
 	// Saving options
 	case "quality", "q":
 		return applyQualityOption(po, args)

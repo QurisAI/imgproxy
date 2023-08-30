@@ -835,3 +835,15 @@ func (img *Image) Strip(keepExifCopyright bool) error {
 
 	return nil
 }
+
+func (img *Image) NormalizeTo8Bit() error {
+    var tmp *C.VipsImage
+
+    if result := C.vips_normalize_to_8bit(img.VipsImage, &tmp); result != 0 {
+        return Error()
+    }
+
+	C.swap_and_clear(&img.VipsImage, tmp)
+
+    return nil
+}

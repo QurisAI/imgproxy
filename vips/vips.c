@@ -1,5 +1,6 @@
 #include "vips.h"
 #include <string.h>
+#include <stdio.h>
 
 #define VIPS_SUPPORT_AVIF_SPEED \
   (VIPS_MAJOR_VERSION > 8 || \
@@ -67,14 +68,14 @@ vips_health() {
 int
 vips_jpegload_go(void *buf, size_t len, int shrink, VipsImage **out) {
   if (shrink > 1)
-    return vips_jpegload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, "shrink", shrink, NULL);
+    return vips_jpegload_buffer(buf, len, out, "access", VIPS_ACCESS_RANDOM, "shrink", shrink, NULL);
 
-  return vips_jpegload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+  return vips_jpegload_buffer(buf, len, out, "access", VIPS_ACCESS_RANDOM, NULL);
 }
 
 int
 vips_pngload_go(void *buf, size_t len, VipsImage **out) {
-  return vips_pngload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+  return vips_pngload_buffer(buf, len, out, "access", VIPS_ACCESS_RANDOM, NULL);
 }
 
 int
@@ -752,6 +753,10 @@ vips_avifsave_go(VipsImage *in, void **buf, size_t *len, int quality, int speed)
     "speed", speed,
   #endif
     NULL);
+}
+
+int vips_normalize_to_8bit(VipsImage *in, VipsImage **out) {
+  return vips_scale(in, out, NULL);
 }
 
 void
