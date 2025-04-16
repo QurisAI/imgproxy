@@ -129,7 +129,7 @@ vips_heifload_go(void *buf, size_t len, VipsImage **out, int thumbnail) {
 
 int
 vips_tiffload_go(void *buf, size_t len, VipsImage **out) {
-  return vips_tiffload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+  return vips_tiffload_buffer(buf, len, out, "access", VIPS_ACCESS_RANDOM, NULL);
 }
 
 int
