@@ -859,8 +859,81 @@ vips_avifsave_go(VipsImage *in, void **buf, size_t *len, int quality, int speed)
     NULL);
 }
 
+#define FLU_DYNAMIC_RANGE_THRESHOLD 2500.0
+
 int vips_normalize_to_8bit(VipsImage *in, VipsImage **out) {
-  return vips_scale(in, out, NULL);
+  // Early return for 8-bit images
+  if (in->BandFmt == VIPS_FORMAT_UCHAR) {
+      fprintf(stderr, "[normalize_to_8bit] Image is already 8-bit — skipping normalization\n");
+      return vips_copy(in, out, NULL);
+  }
+
+  if (in->BandFmt != VIPS_FORMAT_USHORT) {
+      vips_error("vips_normalize_to_8bit", "Unsupported format (must be 8-bit or 16-bit)");
+      return -1;
+  }
+
+  int p1 = 0, p99 = 65535;
+  VipsImage *temp = NULL;
+  int result = -1;
+
+  // Compute percentiles directly using vips_percent
+  if (vips_percent(in, 1.0, &p1, NULL)) {
+      goto cleanup;
+  }
+  
+  if (vips_percent(in, 99.0, &p99, NULL)) {
+      goto cleanup;
+  }
+
+  double dynamic_range = p99 - p1;
+  fprintf(stderr, "[normalize_to_8bit] p1: %d, p99: %d, dynamic_range: %.2f\n", p1, p99, dynamic_range);
+
+  // Process based on image type
+  if (dynamic_range < FLU_DYNAMIC_RANGE_THRESHOLD) {
+      fprintf(stderr, "[normalize_to_8bit] Classified as FLUORESCENCE (dynamic range < %.1f)\n", FLU_DYNAMIC_RANGE_THRESHOLD);
+
+      if (dynamic_range < 1e-5) {
+          // Skip scaling for very small range
+          fprintf(stderr, "[normalize_to_8bit] Dynamic range too small — returning black image\n");
+          if (vips_black(&temp, in->Xsize, in->Ysize, "bands", 1, NULL)) {
+              goto cleanup;
+          }
+      } else {
+          // Percentile-based scaling for fluorescence
+          double scale = 255.0 / dynamic_range;
+          double offset = -p1 * scale;
+          fprintf(stderr, "[normalize_to_8bit] Linear transform: scale=%.6f, offset=%.6f\n", scale, offset);
+          
+          if (vips_linear1(in, &temp, scale, offset, NULL)) {
+              fprintf(stderr, "[normalize_to_8bit] Linear transform failed\n");
+              goto cleanup;
+          }
+      }
+  } else {
+      // Fixed scaling for brightfield
+      fprintf(stderr, "[normalize_to_8bit] Classified as BRIGHTFIELD (fixed scaling from 16-bit)\n");
+      
+      // Use a pre-computed constant for efficiency
+      const double SCALE_16BIT_TO_8BIT = 255.0 / 65535.0;
+      fprintf(stderr, "[normalize_to_8bit] Using fixed 16-bit to 8-bit scaling (%.6f)\n", SCALE_16BIT_TO_8BIT);
+      
+      if (vips_linear1(in, &temp, SCALE_16BIT_TO_8BIT, 0.0, NULL)) {
+          fprintf(stderr, "[normalize_to_8bit] Linear transform failed\n");
+          goto cleanup;
+      }
+  }
+
+  // Cast to 8-bit format
+  if (vips_cast(temp, out, VIPS_FORMAT_UCHAR, NULL)) {
+      goto cleanup;
+  }
+  
+  result = 0;  // Success
+
+cleanup:
+  g_clear_object(&temp);
+  return result;
 }
 
 void
