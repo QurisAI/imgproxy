@@ -844,10 +844,13 @@ func (img *Image) Strip(keepExifCopyright bool) error {
 	return nil
 }
 
-func (img *Image) NormalizeTo8Bit() error {
+func (img *Image) NormalizeTo8Bit(imageType string) error {
     var tmp *C.VipsImage
 
-    if result := C.vips_normalize_to_8bit(img.VipsImage, &tmp); result != 0 {
+    cImageType := C.CString(imageType)
+    defer C.free(unsafe.Pointer(cImageType))
+
+    if result := C.vips_normalize_to_8bit(img.VipsImage, &tmp, cImageType); result != 0 {
         return Error()
     }
 

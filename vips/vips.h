@@ -88,6 +88,6 @@ int vips_gifsave_go(VipsImage *in, void **buf, size_t *len);
 int vips_avifsave_go(VipsImage *in, void **buf, size_t *len, int quality, int speed);
 int vips_tiffsave_go(VipsImage *in, void **buf, size_t *len, int quality);
 
-int vips_normalize_to_8bit(VipsImage *in, VipsImage **out);
+int vips_normalize_to_8bit(VipsImage *in, VipsImage **out, const char* image_type);
 
 void vips_cleanup();

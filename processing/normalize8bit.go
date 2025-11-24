@@ -11,5 +11,5 @@ func normalize8bit(pctx *pipelineContext, img *vips.Image, po *options.Processin
 		return nil
 	}
 
-	return img.NormalizeTo8Bit()
+	return img.NormalizeTo8Bit(po.ImageType)
 }

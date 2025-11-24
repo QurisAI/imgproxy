@@ -861,7 +861,7 @@ vips_avifsave_go(VipsImage *in, void **buf, size_t *len, int quality, int speed)
 
 #define FLU_DYNAMIC_RANGE_THRESHOLD 2500.0
 
-int vips_normalize_to_8bit(VipsImage *in, VipsImage **out) {
+int vips_normalize_to_8bit(VipsImage *in, VipsImage **out, const char* image_type) {
   // Early return for 8-bit images
   if (in->BandFmt == VIPS_FORMAT_UCHAR) {
       fprintf(stderr, "[normalize_to_8bit] Image is already 8-bit — skipping normalization\n");
@@ -881,17 +881,32 @@ int vips_normalize_to_8bit(VipsImage *in, VipsImage **out) {
   if (vips_percent(in, 1.0, &p1, NULL)) {
       goto cleanup;
   }
-  
+
   if (vips_percent(in, 99.0, &p99, NULL)) {
       goto cleanup;
   }
 
   double dynamic_range = p99 - p1;
-  fprintf(stderr, "[normalize_to_8bit] p1: %d, p99: %d, dynamic_range: %.2f\n", p1, p99, dynamic_range);
+  fprintf(stderr, "[normalize_to_8bit] p1: %d, p99: %d, dynamic_range: %.2f, image_type: %s\n", p1, p99, dynamic_range, image_type);
+
+  // Determine processing mode
+  int is_fluorescence;
+  if (strcmp(image_type, "auto") == 0) {
+      // Fallback to dynamic range detection
+      is_fluorescence = (dynamic_range < FLU_DYNAMIC_RANGE_THRESHOLD);
+      fprintf(stderr, "[normalize_to_8bit] AUTO mode: classified as %s (dr=%.2f)\n",
+              is_fluorescence ? "FLUORESCENCE" : "BRIGHTFIELD", dynamic_range);
+  } else if (strcmp(image_type, "fluorescence") == 0) {
+      is_fluorescence = 1;
+      fprintf(stderr, "[normalize_to_8bit] EXPLICIT: Fluorescence mode\n");
+  } else {
+      is_fluorescence = 0;
+      fprintf(stderr, "[normalize_to_8bit] EXPLICIT: Brightfield mode\n");
+  }
 
   // Process based on image type
-  if (dynamic_range < FLU_DYNAMIC_RANGE_THRESHOLD) {
-      fprintf(stderr, "[normalize_to_8bit] Classified as FLUORESCENCE (dynamic range < %.1f)\n", FLU_DYNAMIC_RANGE_THRESHOLD);
+  if (is_fluorescence) {
+      fprintf(stderr, "[normalize_to_8bit] Processing as FLUORESCENCE\n");
 
       if (dynamic_range < 1e-5) {
           // Skip scaling for very small range
@@ -912,8 +927,8 @@ int vips_normalize_to_8bit(VipsImage *in, VipsImage **out) {
       }
   } else {
       // Fixed scaling for brightfield
-      fprintf(stderr, "[normalize_to_8bit] Classified as BRIGHTFIELD (fixed scaling from 16-bit)\n");
-      
+      fprintf(stderr, "[normalize_to_8bit] Processing as BRIGHTFIELD (fixed scaling from 16-bit)\n");
+
       // Use a pre-computed constant for efficiency
       const double SCALE_16BIT_TO_8BIT = 255.0 / 65535.0;
       fprintf(stderr, "[normalize_to_8bit] Using fixed 16-bit to 8-bit scaling (%.6f)\n", SCALE_16BIT_TO_8BIT);

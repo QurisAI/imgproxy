@@ -92,6 +92,7 @@ type ProcessingOptions struct {
 	AutoRotate        bool
 	EnforceThumbnail  bool
 	Normalize8Bit     bool
+	ImageType         string // "brightfield", "fluorescence", or "auto"
 
 	SkipProcessingFormats []imagetype.Type
 
@@ -146,7 +147,8 @@ func NewProcessingOptions() *ProcessingOptions {
 		AutoRotate:        config.AutoRotate,
 		EnforceThumbnail:  config.EnforceThumbnail,
 		ReturnAttachment:  config.ReturnAttachment,
-		Normalize8Bit: 	   false,
+		Normalize8Bit:     false,
+		ImageType:         "auto",
 
 		SkipProcessingFormats: append([]imagetype.Type(nil), config.SkipProcessingFormats...),
 		UsedPresets:           make([]string, 0, len(config.Presets)),
@@ -987,6 +989,19 @@ func applyNormalize8BitOption(po *ProcessingOptions, args []string) error {
 	return nil
 }
 
+func applyImageTypeOption(po *ProcessingOptions, args []string) error {
+	if len(args) > 1 {
+		return fmt.Errorf("Invalid image_type arguments: %v", args)
+	}
+	imageType := strings.ToLower(args[0])
+	if imageType != "brightfield" && imageType != "fluorescence" && imageType != "auto" {
+		return fmt.Errorf("Invalid image_type value: %s (must be 'brightfield', 'fluorescence', or 'auto')", imageType)
+	}
+	po.ImageType = imageType
+
+	return nil
+}
+
 func applyURLOption(po *ProcessingOptions, name string, args []string) error {
 	switch name {
 	case "resize", "rs":
@@ -1045,6 +1060,8 @@ func applyURLOption(po *ProcessingOptions, name string, args []string) error {
 		return applyEnforceThumbnailOption(po, args)
 	case "normalize_8bit", "n8b":
 		return applyNormalize8BitOption(po, args)
+	case "image_type", "it":
+		return applyImageTypeOption(po, args)
 	// Saving options
 	case "quality", "q":
 		return applyQualityOption(po, args)

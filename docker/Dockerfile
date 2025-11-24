@@ -22,7 +22,7 @@ RUN apt-get update \
     libsm6 \
     liblzma5 \
     libzstd1 \
-    libpcre3 \
+    libpcre2-8-0 \
     fontconfig-config \
     media-types \
     libjemalloc2 \
